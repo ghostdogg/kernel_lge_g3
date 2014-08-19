@@ -15,10 +15,129 @@
 #include <linux/rtc.h>
 #include <linux/sched.h>
 #include "rtc-core.h"
+#ifdef CONFIG_RTC_PWROFF_ALARM
+#include <linux/syscalls.h>
+#endif
 
 static dev_t rtc_devt;
 
-#define RTC_DEV_MAX 16 /* 16 RTCs should be enough for everyone... */
+#define RTC_DEV_MAX 16 /*                                          */
+
+#ifdef CONFIG_RTC_PWROFF_ALARM
+
+struct rtc_wkalrm g_poalarm;
+
+/*
+#define LGFTM_RTC_STATE		1
+#define FTM_BLOCK_SIZE		2048
+#define FTM_RTC_OFFSET		512
+#define FTM_RTC_ENABLE_OFFSET	FTM_RTC_OFFSET
+#define FTM_RTC_TIME_OFFSET	FTM_RTC_OFFSET*2
+#define FTM_RTC_WRITE_SIZE	64
+#define FTM_RTC_READ_SIZE	FTM_RTC_WRITE_SIZE
+
+static const char *ftmdev = "/dev/block/platform/msm_sdcc.1/by-name/misc";
+
+void write_rtc_pwron_in_misc(struct rtc_wkalrm *alarm, enum RTC_PWR_TYPE type)
+{
+	int fd;
+	mm_segment_t old_fs;
+	int offset = 0;
+	char buf[FTM_RTC_WRITE_SIZE];
+	unsigned long rtc_time;
+
+	old_fs = get_fs();
+	set_fs(get_ds());
+
+	fd = sys_open(ftmdev, O_WRONLY, 0);
+	if (fd < 0) {
+		pr_err("[%s %d] sys_open error(%d)\n", __func__, __LINE__, fd);
+	}
+	else
+	{
+		if (type == LG_RTC_POWER_ON_ENABLE) {
+			offset = (LGFTM_RTC_STATE) * FTM_BLOCK_SIZE + FTM_RTC_ENABLE_OFFSET;
+			sprintf(buf, "%d", alarm->enabled);
+		}
+		else if (type == LG_RTC_POWER_ON_TIME) {
+			offset = (LGFTM_RTC_STATE) * FTM_BLOCK_SIZE + FTM_RTC_TIME_OFFSET;
+			rtc_tm_to_time(&alarm->time, &rtc_time);
+			sprintf(buf, "%ld", rtc_time);
+		}
+		else {
+			pr_err("[%s %d] invalid RTC_PWR_TYPE(%d)\n", __func__, __LINE__, type);
+			goto exit;
+		}
+
+		sys_lseek(fd, offset, 0);
+
+		if (sys_write(fd, buf, FTM_RTC_WRITE_SIZE) != FTM_RTC_WRITE_SIZE)
+			pr_err("[%s %d] sys_write error\n", __func__, __LINE__);
+		else
+			pr_info("[%s %d] write rtc pwnon %s\n", __func__, __LINE__, buf);
+
+exit:
+		sys_close(fd);
+	}
+
+	set_fs(old_fs);
+
+}
+EXPORT_SYMBOL_GPL(write_rtc_pwron_in_misc);
+
+unsigned long read_rtc_pwron_in_misc(struct rtc_wkalrm *alarm, enum RTC_PWR_TYPE type)
+{
+	int fd;
+	mm_segment_t old_fs;
+	char buf[FTM_RTC_READ_SIZE];
+	unsigned long read_value = 0;
+	int offset = 0;
+
+	old_fs = get_fs();
+	set_fs(get_ds());
+
+	fd = sys_open(ftmdev, O_RDONLY, 0);
+	if (fd < 0) {
+		pr_err("[%s %d] sys_open error(%d)\n", __func__, __LINE__, fd);
+	}
+	else {
+		if (type == LG_RTC_POWER_ON_ENABLE)
+			offset = (LGFTM_RTC_STATE) * FTM_BLOCK_SIZE + FTM_RTC_ENABLE_OFFSET;
+		else if (type == LG_RTC_POWER_ON_TIME)
+			offset = (LGFTM_RTC_STATE) * FTM_BLOCK_SIZE + FTM_RTC_TIME_OFFSET;
+		else {
+			pr_err("[%s %d] invalid RTC_PWR_TYPE(%d)\n", __func__, __LINE__, type);
+			goto exit;
+		}
+
+		pr_info("[%s %d] read rtc power on offset = %d, type = %d\n", __func__, __LINE__, offset, type);
+
+		sys_lseek(fd, offset, 0);
+
+		if (sys_read(fd, buf, FTM_RTC_READ_SIZE) != FTM_RTC_READ_SIZE)
+			pr_err("[%s %d] sys_read error, rtc power on alarm error\n", __func__, __LINE__);
+		else {
+			read_value = simple_strtoul(buf, NULL, 10);
+			pr_info("[%s %d] read value = %s(%ld)\n", __func__, __LINE__, buf, read_value);
+
+			if (type == LG_RTC_POWER_ON_ENABLE)
+				alarm->enabled = (unsigned char)read_value;
+			else if (type == LG_RTC_POWER_ON_TIME)
+				rtc_time_to_tm(read_value, &alarm->time);
+		}
+
+exit:
+		sys_close(fd);
+	}
+
+	set_fs(old_fs);
+
+	return read_value;
+
+}
+EXPORT_SYMBOL_GPL(read_rtc_pwron_in_misc);
+*/
+#endif
 
 static int rtc_dev_open(struct inode *inode, struct file *file)
 {
@@ -41,15 +160,15 @@ static int rtc_dev_open(struct inode *inode, struct file *file)
 		return 0;
 	}
 
-	/* something has gone wrong */
+	/*                          */
 	clear_bit_unlock(RTC_DEV_BUSY, &rtc->flags);
 	return err;
 }
 
 #ifdef CONFIG_RTC_INTF_DEV_UIE_EMUL
 /*
- * Routine to poll RTC seconds field for change as often as possible,
- * after first RTC_UIE use timer to reduce polling
+                                                                     
+                                                  
  */
 static void rtc_uie_task(struct work_struct *work)
 {
@@ -144,7 +263,7 @@ int rtc_dev_update_irq_enable_emul(struct rtc_device *rtc, unsigned int enabled)
 }
 EXPORT_SYMBOL(rtc_dev_update_irq_enable_emul);
 
-#endif /* CONFIG_RTC_INTF_DEV_UIE_EMUL */
+#endif /*                              */
 
 static ssize_t
 rtc_dev_read(struct file *file, char __user *buf, size_t count, loff_t *ppos)
@@ -185,7 +304,7 @@ rtc_dev_read(struct file *file, char __user *buf, size_t count, loff_t *ppos)
 	remove_wait_queue(&rtc->irq_queue, &wait);
 
 	if (ret == 0) {
-		/* Check for any data updates */
+		/*                            */
 		if (rtc->ops->read_callback)
 			data = rtc->ops->read_callback(rtc->dev.parent,
 						       data);
@@ -227,10 +346,10 @@ static long rtc_dev_ioctl(struct file *file,
 	if (err)
 		return err;
 
-	/* check that the calling task has appropriate permissions
-	 * for certain ioctls. doing this check here is useful
-	 * to avoid duplicate code in each driver.
-	 */
+	/*                                                        
+                                                       
+                                           
+  */
 	switch (cmd) {
 	case RTC_EPOCH_SET:
 	case RTC_SET_TIME:
@@ -254,15 +373,15 @@ static long rtc_dev_ioctl(struct file *file,
 		goto done;
 
 	/*
-	 * Drivers *SHOULD NOT* provide ioctl implementations
-	 * for these requests.  Instead, provide methods to
-	 * support the following code, so that the RTC's main
-	 * features are accessible without using ioctls.
-	 *
-	 * RTC and alarm times will be in UTC, by preference,
-	 * but dual-booting with MS-Windows implies RTCs must
-	 * use the local wall clock time.
-	 */
+                                                      
+                                                    
+                                                      
+                                                 
+   
+                                                      
+                                                      
+                                  
+  */
 
 	switch (cmd) {
 	case RTC_ALM_READ:
@@ -288,19 +407,19 @@ static long rtc_dev_ioctl(struct file *file,
 		alarm.time.tm_yday = -1;
 		alarm.time.tm_isdst = -1;
 
-		/* RTC_ALM_SET alarms may be up to 24 hours in the future.
-		 * Rather than expecting every RTC to implement "don't care"
-		 * for day/month/year fields, just force the alarm to have
-		 * the right values for those fields.
-		 *
-		 * RTC_WKALM_SET should be used instead.  Not only does it
-		 * eliminate the need for a separate RTC_AIE_ON call, it
-		 * doesn't have the "alarm 23:59:59 in the future" race.
-		 *
-		 * NOTE:  some legacy code may have used invalid fields as
-		 * wildcards, exposing hardware "periodic alarm" capabilities.
-		 * Not supported here.
-		 */
+		/*                                                        
+                                                              
+                                                            
+                                       
+    
+                                                            
+                                                          
+                                                          
+    
+                                                            
+                                                                
+                        
+   */
 		{
 			unsigned long now, then;
 
@@ -317,7 +436,7 @@ static long rtc_dev_ioctl(struct file *file,
 				return err;
 			rtc_tm_to_time(&alarm.time, &then);
 
-			/* alarm may need to wrap into tomorrow */
+			/*                                      */
 			if (then < now) {
 				rtc_time_to_tm(now + 24 * 60 * 60, &tm);
 				alarm.time.tm_mday = tm.tm_mday;
@@ -357,10 +476,21 @@ static long rtc_dev_ioctl(struct file *file,
 
 	case RTC_AIE_ON:
 		mutex_unlock(&rtc->ops_lock);
+#ifdef CONFIG_RTC_PWROFF_ALARM
+		pr_info("[%s %d] RTC_AIE_ON (%d)\n", __func__, __LINE__, g_poalarm.enabled);
+#endif
 		return rtc_alarm_irq_enable(rtc, 1);
 
 	case RTC_AIE_OFF:
 		mutex_unlock(&rtc->ops_lock);
+#ifdef CONFIG_RTC_PWROFF_ALARM
+		pr_info("[%s %d] RTC_AIE_OFF (%d)\n", __func__, __LINE__, g_poalarm.enabled);
+/*                          
+                         
+                                                               
+                                     
+   */
+#endif
 		return rtc_alarm_irq_enable(rtc, 0);
 
 	case RTC_UIE_ON:
@@ -383,8 +513,8 @@ static long rtc_dev_ioctl(struct file *file,
 	case RTC_EPOCH_SET:
 #ifndef rtc_epoch
 		/*
-		 * There were no RTC clocks before 1900.
-		 */
+                                          
+   */
 		if (arg < 1900) {
 			err = -EINVAL;
 			break;
@@ -405,6 +535,24 @@ static long rtc_dev_ioctl(struct file *file,
 
 		return rtc_set_alarm(rtc, &alarm);
 
+#ifdef CONFIG_RTC_PWROFF_ALARM
+	case RTC_DEVICE_UP:
+		mutex_unlock(&rtc->ops_lock);
+		if (copy_from_user(&g_poalarm, uarg, sizeof(g_poalarm))) {
+			pr_err("[%s %d] copy error, RTC_DEVICE_UP\n", __func__, __LINE__);
+			return -EFAULT;
+		}
+
+		pr_info("[%s]:RTC_DEVICE_UP(%d)\n",__func__,g_poalarm.enabled);
+		pr_info("[%s]:Alarm Set for h:r:s=%d:%d:%d, d/m/y=%d/%d/%d\n",__func__,
+			alarm.time.tm_hour, alarm.time.tm_min,
+			alarm.time.tm_sec, alarm.time.tm_mday,
+			alarm.time.tm_mon, alarm.time.tm_year);
+		/*                                                            */
+		/*                                                          */
+
+		return rtc_set_po_alarm(rtc, &g_poalarm);
+#endif
 	case RTC_WKALM_RD:
 		mutex_unlock(&rtc->ops_lock);
 		err = rtc_read_alarm(rtc, &alarm);
@@ -416,7 +564,7 @@ static long rtc_dev_ioctl(struct file *file,
 		return err;
 
 	default:
-		/* Finally try the driver's ioctl interface */
+		/*                                          */
 		if (ops->ioctl) {
 			err = ops->ioctl(rtc->dev.parent, cmd, arg);
 			if (err == -ENOIOCTLCMD)
@@ -441,16 +589,16 @@ static int rtc_dev_release(struct inode *inode, struct file *file)
 {
 	struct rtc_device *rtc = file->private_data;
 
-	/* We shut down the repeating IRQs that userspace enabled,
-	 * since nothing is listening to them.
-	 *  - Update (UIE) ... currently only managed through ioctls
-	 *  - Periodic (PIE) ... also used through rtc_*() interface calls
-	 *
-	 * Leave the alarm alone; it may be set to trigger a system wakeup
-	 * later, or be used by kernel code, and is a one-shot event anyway.
-	 */
+	/*                                                        
+                                       
+                                                             
+                                                                   
+   
+                                                                   
+                                                                     
+  */
 
-	/* Keep ioctl until all drivers are converted */
+	/*                                            */
 	rtc_dev_ioctl(file, RTC_UIE_OFF, 0);
 	rtc_update_irq_enable(rtc, 0);
 	rtc_irq_set_state(rtc, NULL, 0);
@@ -473,7 +621,7 @@ static const struct file_operations rtc_dev_fops = {
 	.fasync		= rtc_dev_fasync,
 };
 
-/* insertion/removal hooks */
+/*                         */
 
 void rtc_dev_prepare(struct rtc_device *rtc)
 {
@@ -520,6 +668,10 @@ void __init rtc_dev_init(void)
 	if (err < 0)
 		printk(KERN_ERR "%s: failed to allocate char dev region\n",
 			__FILE__);
+
+#ifdef CONFIG_RTC_PWROFF_ALARM
+	memset(&g_poalarm, 0, sizeof(g_poalarm));
+#endif
 }
 
 void __exit rtc_dev_exit(void)

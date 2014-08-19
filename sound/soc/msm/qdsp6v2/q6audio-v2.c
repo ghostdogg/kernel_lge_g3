@@ -145,9 +145,9 @@ int q6audio_convert_virtual_to_portid(u16 port_id)
 {
 	int ret;
 
-	/* if port_id is virtual, convert to physical..
-	 * if port_id is already physical, return physical
-	 */
+	/*                                             
+                                                   
+  */
 	if (q6audio_validate_port(port_id) < 0) {
 		if (port_id == RT_PROXY_DAI_001_RX ||
 			port_id == RT_PROXY_DAI_001_TX ||
@@ -237,6 +237,10 @@ int q6audio_validate_port(u16 port_id)
 	case AFE_PORT_ID_QUATERNARY_MI2S_TX:
 	case AFE_PORT_ID_SECONDARY_MI2S_RX:
 	case AFE_PORT_ID_SECONDARY_MI2S_TX:
+#ifdef CONFIG_SND_FM_RADIO
+	case AFE_PORT_ID_TERTIARY_MI2S_RX:
+	case AFE_PORT_ID_TERTIARY_MI2S_TX:
+#endif
 	{
 		ret = 0;
 		break;

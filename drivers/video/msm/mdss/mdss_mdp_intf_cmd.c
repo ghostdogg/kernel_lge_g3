@@ -23,7 +23,7 @@
 
 #define MAX_SESSIONS 2
 
-/* wait for at most 2 vsync for lowest refresh rate (24hz) */
+/*                                                         */
 #define KOFF_TIMEOUT msecs_to_jiffies(84)
 
 #define STOP_TIMEOUT msecs_to_jiffies(16 * (VSYNC_EXPIRE_TICK + 2))
@@ -46,12 +46,12 @@ struct mdss_mdp_cmd_ctx {
 	struct work_struct pp_done_work;
 	atomic_t pp_done_cnt;
 
-	/* te config */
+	/*           */
 	u8 tear_check;
-	u16 height;	/* panel height */
-	u16 vporch;	/* vertical porches */
+	u16 height;	/*              */
+	u16 vporch;	/*                  */
 	u16 start_threshold;
-	u32 vclk_line;	/* vsync clock per line */
+	u32 vclk_line;	/*                      */
 	struct mdss_panel_recovery recovery;
 };
 
@@ -60,7 +60,7 @@ struct mdss_mdp_cmd_ctx mdss_mdp_cmd_ctx_list[MAX_SESSIONS];
 static inline u32 mdss_mdp_cmd_line_count(struct mdss_mdp_ctl *ctl)
 {
 	struct mdss_mdp_mixer *mixer;
-	u32 cnt = 0xffff;	/* init it to an invalid value */
+	u32 cnt = 0xffff;	/*                             */
 	u32 init;
 	u32 height;
 
@@ -89,7 +89,7 @@ static inline u32 mdss_mdp_cmd_line_count(struct mdss_mdp_ctl *ctl)
 	cnt = mdss_mdp_pingpong_read
 		(mixer, MDSS_MDP_REG_PP_INT_COUNT_VAL) & 0xffff;
 
-	if (cnt < init)		/* wrap around happened at height */
+	if (cnt < init)		/*                                */
 		cnt += (height - init);
 	else
 		cnt -= init;
@@ -102,26 +102,26 @@ exit:
 }
 
 /*
- * TE configuration:
- * dsi byte clock calculated base on 70 fps
- * around 14 ms to complete a kickoff cycle if te disabled
- * vclk_line base on 60 fps
- * write is faster than read
- * init == start == rdptr
+                    
+                                           
+                                                          
+                           
+                            
+                         
  */
 static int mdss_mdp_cmd_tearcheck_cfg(struct mdss_mdp_mixer *mixer,
 			struct mdss_mdp_cmd_ctx *ctx, int enable)
 {
 	u32 cfg;
 
-	cfg = BIT(19); /* VSYNC_COUNTER_EN */
+	cfg = BIT(19); /*                  */
 	if (ctx->tear_check)
-		cfg |= BIT(20);	/* VSYNC_IN_EN */
+		cfg |= BIT(20);	/*             */
 	cfg |= ctx->vclk_line;
 
 	mdss_mdp_pingpong_write(mixer, MDSS_MDP_REG_PP_SYNC_CONFIG_VSYNC, cfg);
 	mdss_mdp_pingpong_write(mixer, MDSS_MDP_REG_PP_SYNC_CONFIG_HEIGHT,
-				0xfff0); /* set to verh height */
+				0xfff0); /*                    */
 
 	mdss_mdp_pingpong_write(mixer, MDSS_MDP_REG_PP_VSYNC_INIT_VAL,
 						ctx->height);
@@ -247,8 +247,6 @@ static void mdss_mdp_cmd_readptr_done(void *arg)
 		return;
 	}
 
-	mdss_mdp_ctl_perf_taken(ctl);
-
 	vsync_time = ktime_get();
 	ctl->vsync_cnt++;
 
@@ -310,8 +308,6 @@ static void mdss_mdp_cmd_pingpong_done(void *arg)
 		return;
 	}
 
-	mdss_mdp_ctl_perf_done(ctl);
-
 	spin_lock(&ctx->clk_lock);
 	list_for_each_entry(tmp, &ctx->vsync_handlers, list) {
 		if (tmp->enabled && tmp->cmd_post_flush)
@@ -344,12 +340,9 @@ static void pingpong_done_work(struct work_struct *work)
 	struct mdss_mdp_cmd_ctx *ctx =
 		container_of(work, typeof(*ctx), pp_done_work);
 
-	if (ctx->ctl) {
+	if (ctx->ctl)
 		while (atomic_add_unless(&ctx->pp_done_cnt, -1, 0))
 			mdss_mdp_ctl_notify(ctx->ctl, MDP_NOTIFY_FRAME_DONE);
-
-		mdss_mdp_ctl_perf_release_bw(ctx->ctl);
-	}
 }
 
 static void clk_ctrl_work(struct work_struct *work)
@@ -520,8 +513,8 @@ int mdss_mdp_cmd_kickoff(struct mdss_mdp_ctl *ctl, void *arg)
 	mdss_mdp_cmd_clk_on(ctx);
 
 	/*
-	 * tx dcs command if had any
-	 */
+                             
+  */
 	mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_DSI_CMDLIST_KOFF,
 						(void *)&ctx->recovery);
 

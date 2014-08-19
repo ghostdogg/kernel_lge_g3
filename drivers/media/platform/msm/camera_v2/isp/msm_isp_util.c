@@ -25,8 +25,9 @@
 static DEFINE_MUTEX(bandwidth_mgr_mutex);
 static struct msm_isp_bandwidth_mgr isp_bandwidth_mgr;
 
+
 #define MSM_ISP_MIN_AB 300000000
-#define MSM_ISP_MIN_IB 450000000
+#define MSM_ISP_MIN_IB 2400000000U //                                                                                             
 
 #define VFE40_8974V2_VERSION 0x1001001A
 static struct msm_bus_vectors msm_isp_init_vectors[] = {
@@ -166,8 +167,20 @@ void msm_isp_deinit_bandwidth_mgr(enum msm_isp_hw_client client)
 		return;
 	}
 
+/*                                              */
+#if 1
+	if (!isp_bandwidth_mgr.bus_client) {
+/*                                                                                          */		
+		pr_err("%s:%d error: bus client invalid\n", __func__, __LINE__);
+		mutex_unlock(&bandwidth_mgr_mutex);
+/*                                                                                          */		
+		return;
+	}
+#else //        
 	if (!isp_bandwidth_mgr.bus_client)
 		return;
+#endif
+/*                                              */
 
 	msm_bus_scale_client_update_request(
 	   isp_bandwidth_mgr.bus_client, 0);
@@ -405,12 +418,12 @@ long msm_isp_ioctl(struct v4l2_subdev *sd,
 	long rc = 0;
 	struct vfe_device *vfe_dev = v4l2_get_subdevdata(sd);
 
-	/* Use real time mutex for hard real-time ioctls such as
-	 * buffer operations and register updates.
-	 * Use core mutex for other ioctls that could take
-	 * longer time to complete such as start/stop ISP streams
-	 * which blocks until the hardware start/stop streaming
-	 */
+	/*                                                      
+                                           
+                                                   
+                                                          
+                                                        
+  */
 	ISP_DBG("%s cmd: %d\n", __func__, _IOC_TYPE(cmd));
 	switch (cmd) {
 	case VIDIOC_MSM_VFE_REG_CFG: {
@@ -540,6 +553,8 @@ static int msm_isp_send_hw_cmd(struct vfe_device *vfe_dev,
 			reg_cfg_cmd->u.mask_info.reg_offset);
 		break;
 	}
+/*                                                                                                                       */
+#if 0 //            
 	case VFE_WRITE_DMI_16BIT:
 	case VFE_WRITE_DMI_32BIT:
 	case VFE_WRITE_DMI_64BIT: {
@@ -588,6 +603,72 @@ static int msm_isp_send_hw_cmd(struct vfe_device *vfe_dev,
 		}
 		break;
 	}
+#else
+	case VFE_WRITE_DMI_16BIT:
+	case VFE_WRITE_DMI_32BIT: {
+		int i;
+		uint32_t *lo_tbl_ptr = NULL;
+		uint32_t lo_val, lo_val1;
+
+		if (reg_cfg_cmd->u.dmi_info.lo_tbl_offset +
+			reg_cfg_cmd->u.dmi_info.len > cmd_len) {
+			pr_err("Invalid Lo Table out of bounds\n");
+			return -EINVAL;
+		}
+		lo_tbl_ptr = cfg_data +
+			reg_cfg_cmd->u.dmi_info.lo_tbl_offset/4;
+
+		for (i = 0; i < reg_cfg_cmd->u.dmi_info.len/4; i++) {
+			lo_val = *lo_tbl_ptr++;
+			if (reg_cfg_cmd->cmd_type == VFE_WRITE_DMI_16BIT) {
+				lo_val1 = lo_val & 0x0000FFFF;
+				lo_val = (lo_val & 0xFFFF0000)>>16;
+				msm_camera_io_w(lo_val1, vfe_dev->vfe_base +
+					vfe_dev->hw_info->dmi_reg_offset + 0x4);
+			}
+			msm_camera_io_w(lo_val, vfe_dev->vfe_base +
+				vfe_dev->hw_info->dmi_reg_offset + 0x4);
+		}
+		break;
+	}
+
+	case VFE_WRITE_DMI_64BIT: {
+		int i;
+		uint32_t *hi_tbl_ptr = NULL, *lo_tbl_ptr = NULL;
+		uint32_t hi_val, lo_val;
+
+		if (reg_cfg_cmd->u.dmi_info.hi_tbl_offset +
+			reg_cfg_cmd->u.dmi_info.len > cmd_len) {
+			pr_err("Invalid Hi Table out of bounds\n");
+			return -EINVAL;
+		}
+
+		if (reg_cfg_cmd->u.dmi_info.lo_tbl_offset +
+			reg_cfg_cmd->u.dmi_info.len > cmd_len) {
+			pr_err("Invalid Lo Table out of bounds\n");
+			return -EINVAL;
+		}
+
+		hi_tbl_ptr = cfg_data +
+				reg_cfg_cmd->u.dmi_info.hi_tbl_offset/4;
+
+		lo_tbl_ptr = cfg_data +
+			reg_cfg_cmd->u.dmi_info.lo_tbl_offset/4;
+
+		for (i = 0; i < reg_cfg_cmd->u.dmi_info.len/8; i++) {
+			lo_val = *lo_tbl_ptr;
+			hi_val = *hi_tbl_ptr;
+			lo_tbl_ptr = lo_tbl_ptr + 2;
+			hi_tbl_ptr = hi_tbl_ptr + 2;
+			msm_camera_io_w(hi_val, vfe_dev->vfe_base +
+					vfe_dev->hw_info->dmi_reg_offset);
+			msm_camera_io_w(lo_val, vfe_dev->vfe_base +
+				vfe_dev->hw_info->dmi_reg_offset + 0x4);
+		}
+		break;
+	}
+#endif
+/*                                                                                                                      */
 	case VFE_READ_DMI_16BIT:
 	case VFE_READ_DMI_32BIT:
 	case VFE_READ_DMI_64BIT: {
@@ -802,7 +883,7 @@ int msm_isp_cal_word_per_line(uint32_t output_format,
 	case V4L2_PIX_FMT_NV61:
 		val = CAL_WORD(pixel_per_line, 1, 8);
 		break;
-		/*TD: Add more image format*/
+		/*                         */
 	default:
 		msm_isp_print_fourcc_error(__func__, output_format);
 		break;
@@ -912,7 +993,7 @@ int msm_isp_get_bit_per_pixel(uint32_t output_format)
 	case V4L2_PIX_FMT_NV61:
 	case V4L2_PIX_FMT_Y16:
 		return 16;
-		/*TD: Add more image format*/
+		/*                         */
 	default:
 		msm_isp_print_fourcc_error(__func__, output_format);
 		return -EINVAL;
@@ -1118,7 +1199,7 @@ int msm_isp_open_node(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 		vfe_dev->soc_hw_version = msm_camera_io_r(vfe_dev->tcsr_base);
 		break;
 	default:
-		/* SOC HARDWARE VERSION NOT SUPPORTED */
+		/*                                    */
 		vfe_dev->soc_hw_version = 0x00;
 	}
 

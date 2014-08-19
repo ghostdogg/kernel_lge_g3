@@ -55,7 +55,18 @@ struct modem_data {
 	struct completion stop_ack;
 };
 
+/*                                                */
+struct lge_hw_smem_id2_type {
+	u32 build_info;             /*                                     */
+	int modem_reset;
+};
+
 #define subsys_to_drv(d) container_of(d, struct modem_data, subsys_desc)
+
+//                                      
+char ssr_noti[MAX_SSR_REASON_LEN];
+//                                    
+
 
 static void log_modem_sfr(void)
 {
@@ -77,6 +88,7 @@ static void log_modem_sfr(void)
 
 	smem_reason[0] = '\0';
 	wmb();
+
 }
 
 static void restart_modem(struct modem_data *drv)
@@ -86,16 +98,44 @@ static void restart_modem(struct modem_data *drv)
 	subsystem_restart_dev(drv->subsys);
 }
 
+static int check_modem_reset(struct modem_data *drv)
+{
+	u32 size;
+	int ret = -EPERM;
+	struct lge_hw_smem_id2_type *smem_id2;
+
+	smem_id2 = smem_get_entry(SMEM_ID_VENDOR2, &size);
+
+	if (smem_id2 == NULL) {
+		pr_err("%s: smem_id2 is NULL.\n", __func__);
+		return ret;
+	}
+
+	if(smem_id2->modem_reset != 1) {
+		ret = 1;
+	} else {
+		wmb();
+		drv->ignore_errors = true;
+		subsys_modem_restart();
+		ret = 0;
+	}
+	return ret;
+}
+
 static irqreturn_t modem_err_fatal_intr_handler(int irq, void *dev_id)
 {
 	struct modem_data *drv = subsys_to_drv(dev_id);
 
-	/* Ignore if we're the one that set the force stop GPIO */
+	/*                                                      */
 	if (drv->crash_shutdown)
 		return IRQ_HANDLED;
 
 	pr_err("Fatal error on the modem.\n");
 	subsys_set_crash_status(drv->subsys, true);
+
+	if (check_modem_reset(drv) == 0)
+		return IRQ_HANDLED;
+
 	restart_modem(drv);
 	return IRQ_HANDLED;
 }
@@ -138,10 +178,10 @@ static int modem_powerup(const struct subsys_desc *subsys)
 	if (subsys->is_not_loadable)
 		return 0;
 	/*
-	 * At this time, the modem is shutdown. Therefore this function cannot
-	 * run concurrently with either the watchdog bite error handler or the
-	 * SMSM callback, making it safe to unset the flag below.
-	 */
+                                                                       
+                                                                       
+                                                          
+  */
 	INIT_COMPLETION(drv->stop_ack);
 	drv->ignore_errors = false;
 	ret = pil_boot(&drv->q6->desc);

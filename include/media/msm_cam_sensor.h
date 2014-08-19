@@ -94,6 +94,12 @@ enum msm_sensor_power_seq_gpio_t {
 	SENSOR_GPIO_VANA,
 	SENSOR_GPIO_VDIG,
 	SENSOR_GPIO_VAF,
+/*                                                        */
+	SENSOR_GPIO_OIS_LDO_EN,
+	SENSOR_GPIO_OIS_RESET,
+	SENSOR_GPIO_AF_MVDD,
+	SENSOR_GPIO_LDAF_EN,
+/*                                                        */
 	SENSOR_GPIO_MAX,
 };
 
@@ -114,6 +120,7 @@ enum msm_sensor_resolution_t {
 	MSM_SENSOR_RES_5,
 	MSM_SENSOR_RES_6,
 	MSM_SENSOR_RES_7,
+	MSM_SENSOR_RES_8,	 //                                                                       
 	MSM_SENSOR_INVALID_RES,
 };
 
@@ -324,6 +331,46 @@ struct msm_sensor_info_t {
 	int32_t     subdev_id[SUB_MODULE_MAX];
 };
 
+/*                                                          */
+struct msm_sensor_ois_info_t{
+	char ois_provider[MAX_SENSOR_NAME];
+	int16_t gyro[2];
+	int16_t target[2];
+	int16_t hall[2];
+	uint8_t is_stable;
+};
+
+enum ois_mode_t {
+	OIS_MODE_PREVIEW_CAPTURE,
+	OIS_MODE_VIDEO,
+	OIS_MODE_CAPTURE,
+	OIS_MODE_CENTERING_ONLY,
+	OIS_MODE_CENTERING_OFF
+};
+
+enum ois_ver_t {
+	OIS_VER_RELEASE,
+	OIS_VER_CALIBRATION,
+	OIS_VER_DEBUG
+};
+
+/*                                                          */
+
+/*                                                            */
+
+struct msm_sensor_proxy_info_t{
+	uint16_t proxy_val;
+	uint32_t proxy_conv;
+	uint32_t proxy_sig;
+	uint32_t proxy_amb;
+	uint32_t proxy_raw;
+	uint32_t cal_count;
+	uint32_t cal_done;
+};
+
+/*                                                            */
+
+
 struct camera_vreg_t {
 	const char *reg_name;
 	enum camera_vreg_type type;
@@ -344,12 +391,13 @@ enum camerab_mode_t {
 };
 
 struct msm_sensor_init_params {
-	/* mask of modes supported: 2D, 3D */
+	/*                                 */
 	int                 modes_supported;
-	/* sensor position: front, back */
+	/*                              */
 	enum camb_position_t position;
-	/* sensor mount angle */
+	/*                    */
 	uint32_t            sensor_mount_angle;
+	int					ois_supported; /*                                                       */
 };
 
 struct sensorb_cfg_data {
@@ -357,6 +405,9 @@ struct sensorb_cfg_data {
 	union {
 		struct msm_sensor_info_t      sensor_info;
 		struct msm_sensor_init_params sensor_init_params;
+		struct msm_sensor_ois_info_t	ois_info;	/*                                                        */
+		struct msm_sensor_proxy_info_t	proxy_info;	/*                                                          */
+		uint16_t proxy_data;	/*                                                               */
 		void                         *setting;
 	} cfg;
 };
@@ -435,6 +486,19 @@ enum msm_sensor_cfg_type_t {
 	CFG_SET_WHITE_BALANCE,
 	CFG_SET_AUTOFOCUS,
 	CFG_CANCEL_AUTOFOCUS,
+	CFG_OIS_ON,					/*                                                  */
+	CFG_OIS_OFF,				/*                                                  */
+	CFG_GET_OIS_INFO,			/*                                                        */
+	CFG_SET_OIS_MODE,   		/*                                                        */
+	CFG_OIS_MOVE_LENS,			/*                                                        */
+	CFG_PROXY_ON,				/*                                                               */
+	CFG_PROXY_OFF,				/*                                                               */
+	CFG_GET_PROXY,				/*                                                               */
+	CFG_PROXY_THREAD_ON,				/*                                                               */
+	CFG_PROXY_THREAD_PAUSE,			/*                                                               */
+	CFG_PROXY_THREAD_RESTART,			/*                                                               */
+	CFG_PROXY_THREAD_OFF,				/*                                                               */
+	CFG_PROXY_CAL,
 };
 
 enum msm_actuator_cfg_type_t {
@@ -466,8 +530,8 @@ struct reg_settings_t {
 };
 
 struct region_params_t {
-	/* [0] = ForwardDirection Macro boundary
-	   [1] = ReverseDirection Inf boundary
+	/*                                      
+                                       
         */
 	uint16_t step_bound[2];
 	uint16_t code_per_step;
@@ -574,10 +638,24 @@ struct msm_actuator_reg_params_t {
 
 enum msm_camera_led_config_t {
 	MSM_CAMERA_LED_OFF,
-	MSM_CAMERA_LED_LOW,
+	MSM_CAMERA_LED_LOW,		//                       
 	MSM_CAMERA_LED_HIGH,
 	MSM_CAMERA_LED_INIT,
 	MSM_CAMERA_LED_RELEASE,
+/*                                                              */
+	MSM_CAMERA_LED_HIGH_20P,
+	MSM_CAMERA_LED_HIGH_40P,
+	MSM_CAMERA_LED_HIGH_60P,
+	MSM_CAMERA_LED_HIGH_80P,
+/*                                                              */
+
+#if 1 //                                              
+/*           
+                                    
+                                
+ */
+	MSM_CAMERA_LED_TORCH,	//                          
+#endif
 };
 
 struct msm_camera_led_cfg_t {
@@ -613,6 +691,6 @@ struct msm_camera_led_cfg_t {
 #define VIDIOC_MSM_SENSOR_GET_AF_STATUS \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 9, uint32_t)
 
-#define MSM_V4L2_PIX_FMT_META v4l2_fourcc('M', 'E', 'T', 'A') /* META */
+#define MSM_V4L2_PIX_FMT_META v4l2_fourcc('M', 'E', 'T', 'A') /*      */
 
-#endif /* __LINUX_MSM_CAM_SENSOR_H */
+#endif /*                          */

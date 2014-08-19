@@ -162,7 +162,7 @@ void dma_done_notify_handler(void *arg)
 void vsync_count_down(void *arg)
 {
 	struct mdp3_session_data *session = (struct mdp3_session_data *)arg;
-	/* We are counting down to turn off clocks */
+	/*                                         */
 	atomic_dec(&session->vsync_countdown);
 	if (atomic_read(&session->vsync_countdown) == 0)
 		schedule_work(&session->clk_off_work);
@@ -197,10 +197,10 @@ static int mdp3_ctrl_vsync_enable(struct msm_fb_data_type *mfd, int enable)
 		arg = &vsync_client;
 	} else if (atomic_read(&mdp3_session->vsync_countdown)) {
 		/*
-		 * Now that vsync is no longer needed we will
-		 * shutdown dsi clocks as soon as cnt down == 0
-		 * for cmd mode panels
-		 */
+                                               
+                                                 
+                        
+   */
 		vsync_client.handler = vsync_count_down;
 		vsync_client.arg = mdp3_session;
 		arg = &vsync_client;
@@ -212,9 +212,9 @@ static int mdp3_ctrl_vsync_enable(struct msm_fb_data_type *mfd, int enable)
 	mdp3_clk_enable(0, 0);
 
 	/*
-	 * Need to fake vsync whenever dsi interface is not
-	 * active or when dsi clocks are currently off
-	 */
+                                                    
+                                               
+  */
 	if (enable && mdp3_session->status == 1
 			&& (mdp3_session->vsync_before_commit ||
 			!mdp3_session->intf->active)) {
@@ -584,7 +584,7 @@ static int mdp3_ctrl_on(struct msm_fb_data_type *mfd)
 		goto on_error;
 	}
 
-	/* request bus bandwidth before DSI DMA traffic */
+	/*                                              */
 	rc = mdp3_ctrl_res_req_bus(mfd, 1);
 	if (rc) {
 		pr_err("fail to request bus resource\n");
@@ -1021,7 +1021,7 @@ static int mdp3_ctrl_display_commit_kickoff(struct msm_fb_data_type *mfd,
 		rc = mdp3_session->dma->update(mdp3_session->dma,
 			(void *)data->addr,
 			mdp3_session->intf);
-		/* This is for the previous frame */
+		/*                                */
 		if (rc < 0) {
 			mdp3_ctrl_notify(mdp3_session,
 				MDP_NOTIFY_FRAME_TIMEOUT);
@@ -1044,7 +1044,7 @@ static int mdp3_ctrl_display_commit_kickoff(struct msm_fb_data_type *mfd,
 	}
 
 	if (mdp3_session->first_commit) {
-		/*wait for one frame time to ensure frame is sent to panel*/
+		/*                                                        */
 		msleep(1000 / panel_info->mipi.frame_rate);
 		mdp3_session->first_commit = false;
 	}
@@ -1111,7 +1111,7 @@ static void mdp3_ctrl_pan_display(struct msm_fb_data_type *mfd,
 		rc = mdp3_session->dma->update(mdp3_session->dma,
 				(void *)(mfd->iova + offset),
 				mdp3_session->intf);
-		/* This is for the previous frame */
+		/*                                */
 		if (rc < 0) {
 			mdp3_ctrl_notify(mdp3_session,
 				MDP_NOTIFY_FRAME_TIMEOUT);
@@ -1131,7 +1131,7 @@ static void mdp3_ctrl_pan_display(struct msm_fb_data_type *mfd,
 	}
 
 	if (mdp3_session->first_commit) {
-		/*wait for one frame time to ensure frame is sent to panel*/
+		/*                                                        */
 		msleep(1000 / panel_info->mipi.frame_rate);
 		mdp3_session->first_commit = false;
 	}
@@ -1404,7 +1404,7 @@ static int mdp3_bl_scale_config(struct msm_fb_data_type *mfd,
 	pr_debug("update scale = %d, min_lvl = %d\n", mfd->bl_scale,
 							mfd->bl_min_lvl);
 
-	/* update current backlight to use new scaling*/
+	/*                                            */
 	mdss_fb_set_backlight(mfd, curr_bl);
 	mutex_unlock(&mfd->bl_lock);
 	return ret;
@@ -1598,43 +1598,6 @@ static int mdp3_ctrl_lut_update(struct msm_fb_data_type *mfd,
 	return rc;
 }
 
-static int mdp3_overlay_prepare(struct msm_fb_data_type *mfd,
-		struct mdp_overlay_list __user *user_ovlist)
-{
-	struct mdp_overlay_list ovlist;
-	struct mdp3_session_data *mdp3_session = mfd->mdp.private1;
-	struct mdp_overlay *req;
-	int rc;
-
-	if (!mdp3_session)
-		return -ENODEV;
-
-	req = &mdp3_session->req_overlay;
-
-	if (copy_from_user(&ovlist, user_ovlist, sizeof(ovlist)))
-		return -EFAULT;
-
-	if (ovlist.num_overlays != 1) {
-		pr_err("OV_PREPARE failed: only 1 overlay allowed\n");
-		return -EINVAL;
-	}
-
-	if (copy_from_user(req, ovlist.overlay_list[0], sizeof(*req)))
-		return -EFAULT;
-
-	rc = mdp3_overlay_set(mfd, req);
-	if (!IS_ERR_VALUE(rc)) {
-		if (copy_to_user(ovlist.overlay_list[0], req, sizeof(*req)))
-			return -EFAULT;
-	}
-
-	if (put_user(IS_ERR_VALUE(rc) ? 0 : 1,
-			&user_ovlist->processed_overlays))
-		return -EFAULT;
-
-	return rc;
-}
-
 static int mdp3_ctrl_ioctl_handler(struct msm_fb_data_type *mfd,
 					u32 cmd, void __user *argp)
 {
@@ -1733,9 +1696,6 @@ static int mdp3_ctrl_ioctl_handler(struct msm_fb_data_type *mfd,
 			rc = mdp3_overlay_play(mfd, &ov_data);
 		if (rc)
 			pr_err("OVERLAY_PLAY failed (%d)\n", rc);
-		break;
-	case MSMFB_OVERLAY_PREPARE:
-		rc = mdp3_overlay_prepare(mfd, argp);
 		break;
 	default:
 		break;

@@ -17,6 +17,27 @@
 #include <linux/rwsem.h>
 #include <linux/leds.h>
 
+#if defined(CONFIG_LGE_DUAL_LED)
+/*           
+                 
+                               
+ */
+static inline void led_set_brightness2(struct led_classdev *led_cdev,
+					enum led_brightness value, enum led_brightness value2)
+{
+	if (value > led_cdev->max_brightness)
+		value = led_cdev->max_brightness;
+
+	if (value2 > led_cdev->max_brightness)
+		value2 = led_cdev->max_brightness;
+
+	led_cdev->brightness = value;
+	led_cdev->brightness2 = value2;
+	if (!(led_cdev->flags & LED_SUSPENDED))
+		led_cdev->brightness_set2(led_cdev, value, value2);
+}
+#endif
+
 static inline void led_set_brightness(struct led_classdev *led_cdev,
 					enum led_brightness value)
 {
@@ -58,4 +79,4 @@ ssize_t led_trigger_store(struct device *dev, struct device_attribute *attr,
 ssize_t led_trigger_show(struct device *dev, struct device_attribute *attr,
 			char *buf);
 
-#endif	/* __LEDS_H_INCLUDED */
+#endif	/*                   */

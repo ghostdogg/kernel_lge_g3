@@ -17,19 +17,23 @@
 #include <linux/workqueue.h>
 #include <linux/leds.h>
 
+#ifdef CONFIG_LGE_CHARGER_TEMP_SCENARIO
+#include <mach/lge_charging_scenario.h>
+#endif
+
 struct device;
 
 /*
- * All voltages, currents, charges, energies, time and temperatures in uV,
- * µA, µAh, µWh, seconds and tenths of degree Celsius unless otherwise
- * stated. It's driver's job to convert its raw values to units in which
- * this class operates.
+                                                                          
+                                                                         
+                                                                        
+                       
  */
 
 /*
- * For systems where the charger determines the maximum battery capacity
- * the min and max fields should be used to present these values to user
- * space. Unused/unknown fields will not appear in sysfs.
+                                                                        
+                                                                        
+                                                         
  */
 
 enum {
@@ -85,7 +89,7 @@ enum {
 };
 
 enum power_supply_property {
-	/* Properties of type `int' */
+	/*                          */
 	POWER_SUPPLY_PROP_STATUS = 0,
 	POWER_SUPPLY_PROP_CHARGE_TYPE,
 	POWER_SUPPLY_PROP_HEALTH,
@@ -124,7 +128,7 @@ enum power_supply_property {
 	POWER_SUPPLY_PROP_ENERGY_EMPTY,
 	POWER_SUPPLY_PROP_ENERGY_NOW,
 	POWER_SUPPLY_PROP_ENERGY_AVG,
-	POWER_SUPPLY_PROP_CAPACITY, /* in percents! */
+	POWER_SUPPLY_PROP_CAPACITY, /*              */
 	POWER_SUPPLY_PROP_CAPACITY_LEVEL,
 	POWER_SUPPLY_PROP_TEMP,
 	POWER_SUPPLY_PROP_COOL_TEMP,
@@ -134,14 +138,68 @@ enum power_supply_property {
 	POWER_SUPPLY_PROP_TIME_TO_EMPTY_AVG,
 	POWER_SUPPLY_PROP_TIME_TO_FULL_NOW,
 	POWER_SUPPLY_PROP_TIME_TO_FULL_AVG,
-	POWER_SUPPLY_PROP_TYPE, /* use power_supply.type instead */
+	POWER_SUPPLY_PROP_TYPE, /*                               */
 	POWER_SUPPLY_PROP_SCOPE,
 	POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL,
 	POWER_SUPPLY_PROP_RESISTANCE,
-	/* Properties of type `const char *' */
+#if defined(CONFIG_LGE_PM_BATTERY_ID_CHECKER)
+	POWER_SUPPLY_PROP_BATTERY_ID_CHECKER,
+#endif
+#ifdef CONFIG_LGE_PM
+	POWER_SUPPLY_PROP_PSEUDO_BATT,
+	POWER_SUPPLY_PROP_EXT_PWR_CHECK,
+	POWER_SUPPLY_PROP_BAT_REMOVED,
+#endif
+#ifdef CONFIG_VZW_POWER_REQ
+	POWER_SUPPLY_PROP_VZW_CHG,
+#endif
+#if defined(CONFIG_CHARGER_MAX77819) || defined(CONFIG_CHARGER_MAX8971) || defined(CONFIG_BQ24296_CHARGER)
+	POWER_SUPPLY_PROP_SAFTETY_CHARGER_TIMER,
+	POWER_SUPPLY_PROP_CHARGING_COMPLETE,
+#endif
+#if defined(CONFIG_CHARGER_UNIFIED_WLC)
+	POWER_SUPPLY_PROP_WIRELESS_CHARGER_SWITCH,
+#ifdef CONFIG_CHARGER_UNIFIED_WLC_ALIGNMENT
+	POWER_SUPPLY_PROP_ALIGNMENT,
+#if defined(CONFIG_CHARGER_UNIFIED_WLC_ALIGNMENT_IDT9025A) && defined(CONFIG_CHARGER_FACTORY_MODE)
+	POWER_SUPPLY_PROP_FREQUENCY,
+#elif defined(CONFIG_CHARGER_UNIFIED_WLC_ALIGNMENT_BQ5102X) && defined(CONFIG_CHARGER_FACTORY_MODE)
+	POWER_SUPPLY_PROP_VRECT,
+#endif
+#endif
+#endif
+#if defined(CONFIG_LGE_PM_VZW_LLK)
+	POWER_SUPPLY_PROP_STORE_DEMO_ENABLED,
+#endif
+	/*                                   */
 	POWER_SUPPLY_PROP_MODEL_NAME,
 	POWER_SUPPLY_PROP_MANUFACTURER,
 	POWER_SUPPLY_PROP_SERIAL_NUMBER,
+};
+
+enum power_supply_event_type {
+	POWER_SUPPLY_PROP_UNKNOWN,
+#if defined(CONFIG_CHARGER_UNIFIED_WLC)
+	POWER_SUPPLY_PROP_WIRELESS_DCIN_PRESENT,
+	POWER_SUPPLY_PROP_WIRELESS_USB_PRESENT,
+	POWER_SUPPLY_PROP_WIRELESS_CHARGE_ENABLED,
+	POWER_SUPPLY_PROP_WIRELESS_CHARGE_COMPLETED,
+	POWER_SUPPLY_PROP_WIRELESS_ONLINE,
+	POWER_SUPPLY_PROP_WIRELESS_ONLINE_OTG,
+	POWER_SUPPLY_PROP_WIRELESS_FAKE_OTG,
+#ifdef CONFIG_LGE_THERMALE_CHG_CONTROL_FOR_WLC
+	POWER_SUPPLY_PROP_WIRELESS_THERMAL_MITIGATION,
+#endif
+#endif
+	POWER_SUPPLY_PROP_ABNORMAL_TA,
+#if defined(CONFIG_LGE_SMART_CHARGING)
+	POWER_SUPPLY_PROP_SMART_CHARGING_ENABLE,
+	POWER_SUPPLY_PROP_SMART_CHARGING_CHG_CURRENT,
+	POWER_SUPPLY_PROP_SMART_CHARGING_FORCE_UPDATE,
+#endif
+#ifdef CONFIG_LGE_PM
+	POWER_SUPPLY_PROP_FLOATED_CHARGER,
+#endif
 };
 
 enum power_supply_type {
@@ -149,11 +207,14 @@ enum power_supply_type {
 	POWER_SUPPLY_TYPE_BATTERY,
 	POWER_SUPPLY_TYPE_UPS,
 	POWER_SUPPLY_TYPE_MAINS,
-	POWER_SUPPLY_TYPE_USB,		/* Standard Downstream Port */
-	POWER_SUPPLY_TYPE_USB_DCP,	/* Dedicated Charging Port */
-	POWER_SUPPLY_TYPE_USB_CDP,	/* Charging Downstream Port */
-	POWER_SUPPLY_TYPE_USB_ACA,	/* Accessory Charger Adapters */
-	POWER_SUPPLY_TYPE_BMS,		/* Battery Monitor System */
+	POWER_SUPPLY_TYPE_USB,		/*                          */
+	POWER_SUPPLY_TYPE_USB_DCP,	/*                         */
+	POWER_SUPPLY_TYPE_USB_CDP,	/*                          */
+	POWER_SUPPLY_TYPE_USB_ACA,	/*                            */
+#if defined(CONFIG_CHARGER_UNIFIED_WLC)
+	POWER_SUPPLY_TYPE_WIRELESS,
+#endif
+	POWER_SUPPLY_TYPE_BMS,		/*                        */
 };
 
 union power_supply_propval {
@@ -176,15 +237,21 @@ struct power_supply {
 	int (*set_property)(struct power_supply *psy,
 			    enum power_supply_property psp,
 			    const union power_supply_propval *val);
+	int (*get_event_property)(struct power_supply *psy,
+			enum power_supply_event_type psp,
+			union power_supply_propval *val);
+	int (*set_event_property)(struct power_supply *psy,
+			enum power_supply_event_type psp,
+			    const union power_supply_propval *val);
 	int (*property_is_writeable)(struct power_supply *psy,
 				     enum power_supply_property psp);
 	void (*external_power_changed)(struct power_supply *psy);
 	void (*set_charged)(struct power_supply *psy);
 
-	/* For APM emulation, think legacy userspace. */
+	/*                                            */
 	int use_for_apm;
 
-	/* private */
+	/*         */
 	struct device *dev;
 	struct work_struct changed_work;
 	spinlock_t changed_lock;
@@ -203,13 +270,16 @@ struct power_supply {
 	struct led_trigger *charging_blink_full_solid_trig;
 	char *charging_blink_full_solid_trig_name;
 #endif
+#ifdef CONFIG_LGE_PM
+	int is_floated_charger;
+#endif
 };
 
 /*
- * This is recommended structure to specify static power supply parameters.
- * Generic one, parametrizable for different power supplies. Power supply
- * class itself does not use it, but that's what implementing most platform
- * drivers, should try reuse for consistency.
+                                                                           
+                                                                         
+                                                                           
+                                             
  */
 
 struct power_supply_info {
@@ -225,6 +295,9 @@ struct power_supply_info {
 };
 
 #if defined(CONFIG_POWER_SUPPLY) || defined(CONFIG_POWER_SUPPLY_MODULE)
+#ifdef CONFIG_LGE_PM
+int power_supply_set_floated_charger(struct power_supply *psy, int is_float);
+#endif
 extern struct power_supply *power_supply_get_by_name(char *name);
 extern void power_supply_changed(struct power_supply *psy);
 extern int power_supply_am_i_supplied(struct power_supply *psy);
@@ -281,7 +354,7 @@ static inline int power_supply_powers(struct power_supply *psy,
 							{ return -ENOSYS; }
 #endif
 
-/* For APM emulation, think legacy userspace. */
+/*                                            */
 extern struct class *power_supply_class;
 
 static inline bool power_supply_is_amp_property(enum power_supply_property psp)
@@ -332,4 +405,4 @@ static inline bool power_supply_is_watt_property(enum power_supply_property psp)
 	return 0;
 }
 
-#endif /* __LINUX_POWER_SUPPLY_H__ */
+#endif /*                          */

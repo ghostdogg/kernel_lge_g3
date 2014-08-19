@@ -60,13 +60,28 @@ static int msm_buf_mngr_buf_done(struct msm_buf_mngr_device *buf_mngr_dev,
 		if ((bufs->session_id == buf_info->session_id) &&
 			(bufs->stream_id == buf_info->stream_id) &&
 			(bufs->vb2_buf->v4l2_buf.index == buf_info->index)) {
+/*                                                                 */
+#if 0
 			bufs->vb2_buf->v4l2_buf.sequence  = buf_info->frame_id;
 			bufs->vb2_buf->v4l2_buf.timestamp = buf_info->timestamp;
 			bufs->vb2_buf->v4l2_buf.reserved = 0;
+#endif
+/*                                                                 */
 			ret = buf_mngr_dev->vb2_ops.buf_done
 					(bufs->vb2_buf,
 						buf_info->session_id,
 						buf_info->stream_id);
+/*                                                                 */
+#if 1
+			if (!ret) {
+						bufs->vb2_buf->v4l2_buf.sequence  = buf_info->frame_id;
+						bufs->vb2_buf->v4l2_buf.timestamp = buf_info->timestamp;
+						bufs->vb2_buf->v4l2_buf.reserved = 0;
+			} else {
+						pr_err("%s:vb2_ops failed %d type= %d\n", __func__, ret,bufs->vb2_buf->v4l2_buf.type);
+            }
+#endif
+/*                                                                 */
 			list_del_init(&bufs->entry);
 			kfree(bufs);
 			break;
@@ -210,7 +225,7 @@ static int __init msm_buf_mngr_init(void)
 		pr_err("%s: not enough memory", __func__);
 		return -ENOMEM;
 	}
-	/* Sub-dev */
+	/*         */
 	v4l2_subdev_init(&msm_buf_mngr_dev->subdev.sd,
 		&msm_buf_mngr_subdev_ops);
 	snprintf(msm_buf_mngr_dev->subdev.sd.name,

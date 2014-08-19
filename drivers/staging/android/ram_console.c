@@ -28,6 +28,10 @@ static struct persistent_ram_zone *ram_console_zone;
 static const char *bootinfo;
 static size_t bootinfo_size;
 
+/*                                                                    
+                                                                       
+  */
+#define USE_RAM_CONSOLE_ECC	false
 static void
 ram_console_write(struct console *console, const char *s, unsigned int count)
 {
@@ -55,7 +59,7 @@ static int __devinit ram_console_probe(struct platform_device *pdev)
 	struct ram_console_platform_data *pdata = pdev->dev.platform_data;
 	struct persistent_ram_zone *prz;
 
-	prz = persistent_ram_init_ringbuffer(&pdev->dev, true);
+	prz = persistent_ram_init_ringbuffer(&pdev->dev, USE_RAM_CONSOLE_ECC);
 	if (IS_ERR(prz))
 		return PTR_ERR(prz);
 
@@ -104,7 +108,7 @@ static ssize_t ram_console_read_old(struct file *file, char __user *buf,
 	if (dmesg_restrict && !capable(CAP_SYSLOG))
 		return -EPERM;
 
-	/* Main last_kmsg log */
+	/*                    */
 	if (pos < old_log_size) {
 		count = min(len, (size_t)(old_log_size - pos));
 		if (copy_to_user(buf, old_log + pos, count))
@@ -112,7 +116,7 @@ static ssize_t ram_console_read_old(struct file *file, char __user *buf,
 		goto out;
 	}
 
-	/* ECC correction notice */
+	/*                       */
 	pos -= old_log_size;
 	count = persistent_ram_ecc_string(prz, NULL, 0);
 	if (pos < count) {
@@ -128,7 +132,7 @@ static ssize_t ram_console_read_old(struct file *file, char __user *buf,
 		goto out;
 	}
 
-	/* Boot info passed through pdata */
+	/*                                */
 	pos -= count;
 	if (pos < bootinfo_size) {
 		count = min(len, (size_t)(bootinfo_size - pos));
@@ -137,7 +141,7 @@ static ssize_t ram_console_read_old(struct file *file, char __user *buf,
 		goto out;
 	}
 
-	/* EOF */
+	/*     */
 	return 0;
 
 out:

@@ -16,16 +16,16 @@
 #include <linux/errno.h>
 
 #ifdef CONFIG_QPNP_MISC
-/**
- * qpnp_misc_irqs_available - check if IRQs are available
- *
- * @consumer_dev: device struct
- *
- * This function returns true if the MISC interrupts are available
- * based on a check in the MISC peripheral revision registers.
- *
- * Any consumer of this function needs to reference a MISC device phandle
- * using the qcom,misc-ref in their device tree node.
+/* 
+                                                         
+  
+                               
+  
+                                                                  
+                                                              
+  
+                                                                         
+                                                     
  */
 
 int qpnp_misc_irqs_available(struct device *consumer_dev);
@@ -34,5 +34,11 @@ static int qpnp_misc_irqs_available(struct device *consumer_dev)
 {
 	return 0;
 }
+#endif
+#ifdef CONFIG_SMB349_CHARGER
+/*                                               */
+int smb349_pmic_usb_override(bool mode);
+bool smb349_pmic_batt_present(void);
+void smb349_pmic_reg_dump(void);
 #endif
 #endif

@@ -10,7 +10,7 @@
 #ifndef _ASMARM_PAGE_H
 #define _ASMARM_PAGE_H
 
-/* PAGE_SHIFT determines the page size */
+/*                                     */
 #define PAGE_SHIFT		12
 #define PAGE_SIZE		(_AC(1,UL) << PAGE_SHIFT)
 #define PAGE_MASK		(~(PAGE_SIZE-1))
@@ -26,20 +26,20 @@
 #include <asm/glue.h>
 
 /*
- *	User Space Model
- *	================
- *
- *	This section selects the correct set of functions for dealing with
- *	page-based copying and clearing for user space for the particular
- *	processor(s) we're building for.
- *
- *	We have the following to choose from:
- *	  v3		- ARMv3
- *	  v4wt		- ARMv4 with writethrough cache, without minicache
- *	  v4wb		- ARMv4 with writeback cache, without minicache
- *	  v4_mc		- ARMv4 with minicache
- *	  xscale	- Xscale
- *	  xsc3		- XScalev3
+                   
+                   
+  
+                                                                     
+                                                                    
+                                   
+  
+                                        
+                
+                                                             
+                                                          
+                                  
+                    
+                     
  */
 #undef _USER
 #undef MULTI_USER
@@ -151,6 +151,9 @@ extern void __cpu_copy_user_highpage(struct page *to, struct page *from,
 #define clear_page(page)	memset((void *)(page), 0, PAGE_SIZE)
 extern void copy_page(void *to, const void *from);
 
+#define __HAVE_ARCH_PAGECMP
+extern int cmp_page(const void *, const void *);
+
 #ifdef CONFIG_KUSER_HELPERS
 #define __HAVE_ARCH_GATE_AREA 1
 #endif
@@ -161,7 +164,7 @@ extern void copy_page(void *to, const void *from);
 #include <asm/pgtable-2level-types.h>
 #endif
 
-#endif /* CONFIG_MMU */
+#endif /*            */
 
 typedef struct page *pgtable_t;
 
@@ -176,7 +179,7 @@ extern int _early_pfn_valid(unsigned long);
 
 #include <asm/memory.h>
 
-#endif /* !__ASSEMBLY__ */
+#endif /*               */
 
 #define VM_DATA_DEFAULT_FLAGS \
 	(((current->personality & READ_IMPLIES_EXEC) ? VM_EXEC : 0) | \

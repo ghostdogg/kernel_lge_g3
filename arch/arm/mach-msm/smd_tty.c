@@ -63,35 +63,44 @@ static void *smd_tty_log_ctx;
 static struct delayed_work smd_tty_probe_work;
 static int smd_tty_probe_done;
 
-/**
- * struct smd_tty_info - context for an individual SMD TTY device
- *
- * @ch:  SMD channel handle
- * @port:  TTY port context structure
- * @device_ptr:  TTY device pointer
- * @pending_ws:  pending-data wakeup source
- * @tty_tsklt:  read tasklet
- * @buf_req_timer:  RX buffer retry timer
- * @ch_allocated:  completion set when SMD channel is allocated
- * @driver:  SMD channel platform driver context structure
- * @pil:  Peripheral Image Loader handle
- * @edge:  SMD edge associated with port
- * @ch_name:  SMD channel name associated with port
- * @dev_name:  SMD platform device name associated with port
- *
- * @open_lock_lha1: open/close lock - used to serialize open/close operations
- * @open_wait:  Timeout in seconds to wait for SMD port to be created / opened
- *
- * @reset_lock_lha2: lock for reset and open state
- * @in_reset:  True if SMD channel is closed / in SSR
- * @in_reset_updated:  reset state changed
- * @is_open:  True if SMD port is open
- * @ch_opened_wait_queue:  SMD port open/close wait queue
- *
- * @ra_lock_lha3:  Read-available lock - used to synchronize reads from SMD
- * @ra_wakeup_source_name: Name of the read-available wakeup source
- * @ra_wakeup_source:  Read-available wakeup source
+#ifdef CONFIG_LGE_USES_SMD_DS_TTY
+static uint lge_ds_modem_wait = 20;
+/*
+                                                    
+                                      
+*/
+#endif
+
+/* 
+                                                                 
+  
+                           
+                                     
+                                   
+                                           
+                            
+                                         
+                                                               
+                                                          
+                                        
+                                        
+                                                   
+                                                            
+  
+                                                                             
+                                                                              
+  
+                                                  
+                                                     
+                                          
+                                      
+                                                         
+  
+                                                                           
+                                                                   
+                                                   
  */
+
 struct smd_tty_info {
 	smd_channel_t *ch;
 	struct tty_port port;
@@ -113,6 +122,9 @@ struct smd_tty_info {
 	int in_reset;
 	int in_reset_updated;
 	int is_open;
+#ifdef CONFIG_LGE_USES_SMD_DS_TTY
+	int is_dsmodem_ready;
+#endif
 	wait_queue_head_t ch_opened_wait_queue;
 
 	spinlock_t ra_lock_lha3;
@@ -120,13 +132,13 @@ struct smd_tty_info {
 	struct wakeup_source ra_wakeup_source;
 };
 
-/**
- * SMD port configuration.
- *
- * @tty_dev_index   Index into smd_tty[]
- * @port_name       Name of the SMD port
- * @dev_name        Name of the TTY Device (if NULL, @port_name is used)
- * @edge            SMD edge
+/* 
+                          
+  
+                                        
+                                        
+                                                                        
+                            
  */
 struct smd_config {
 	uint32_t tty_dev_index;
@@ -135,11 +147,11 @@ struct smd_config {
 	uint32_t edge;
 };
 
-/**
- * struct smd_config smd_configs[]: Legacy configuration
- *
- * An array of all SMD tty channel supported in legacy targets.
- * Future targets use either platform device or device tree configuration.
+/* 
+                                                        
+  
+                                                               
+                                                                          
  */
 static struct smd_config smd_configs[] = {
 	{0, "DS", NULL, SMD_APPS_MODEM},
@@ -151,7 +163,9 @@ static struct smd_config smd_configs[] = {
 	{6, "APPS_RIVA_ANT_DATA", NULL, SMD_APPS_WCNSS},
 	{7, "DATA1", NULL, SMD_APPS_MODEM},
 	{8, "DATA4", NULL, SMD_APPS_MODEM},
+#ifndef CONFIG_LGE_DDM_TTY
 	{11, "DATA11", NULL, SMD_APPS_MODEM},
+#endif
 	{21, "DATA21", NULL, SMD_APPS_MODEM},
 	{27, "GPSNMEA", NULL, SMD_APPS_MODEM},
 	{36, "LOOPBACK", "LOOPBACK_TTY", SMD_APPS_MODEM},
@@ -253,7 +267,7 @@ static void smd_tty_read(unsigned long param)
 
 	for (;;) {
 		if (is_in_reset(info)) {
-			/* signal TTY clients using TTY_BREAK */
+			/*                                    */
 			tty_insert_flip_char(tty, 0x00, TTY_BREAK);
 			tty_flip_buffer_push(tty);
 			break;
@@ -281,26 +295,26 @@ static void smd_tty_read(unsigned long param)
 		}
 
 		if (smd_read(info->ch, ptr, avail) != avail) {
-			/* shouldn't be possible since we're in interrupt
-			** context here and nobody else could 'steal' our
-			** characters.
-			*/
+			/*                                               
+                                                    
+                 
+   */
 			SMD_TTY_ERR(
 				"%s - Possible smd_tty_buffer mismatch for %s",
 				__func__, info->ch->name);
 		}
 
 		/*
-		 * Keep system awake long enough to allow the TTY
-		 * framework to pass the flip buffer to any waiting
-		 * userspace clients.
-		 */
+                                                   
+                                                     
+                       
+   */
 		__pm_wakeup_event(&info->pending_ws, TTY_PUSH_WS_DELAY);
 
 		tty_flip_buffer_push(tty);
 	}
 
-	/* XXX only when writable and necessary */
+	/*                                      */
 	tty_wakeup(tty);
 	tty_kref_put(tty);
 }
@@ -319,11 +333,11 @@ static void smd_tty_notify(void *priv, unsigned event)
 			break;
 		}
 		spin_unlock_irqrestore(&info->reset_lock_lha2, flags);
-		/* There may be clients (tty framework) that are blocked
-		 * waiting for space to write data, so if a possible read
-		 * interrupt came in wake anyone waiting and disable the
-		 * interrupts
-		 */
+		/*                                                      
+                                                           
+                                                          
+               
+   */
 		if (smd_write_avail(info->ch)) {
 			smd_disable_read_intr(info->ch);
 			tty = tty_port_tty_get(&info->port);
@@ -362,7 +376,7 @@ static void smd_tty_notify(void *priv, unsigned event)
 
 		tty = tty_port_tty_get(&info->port);
 		if (tty) {
-			/* send TTY_BREAK through read tasklet */
+			/*                                     */
 			set_bit(TTY_OTHER_CLOSED, &tty->flags);
 			tasklet_hi_schedule(&info->tty_tsklt);
 
@@ -372,6 +386,28 @@ static void smd_tty_notify(void *priv, unsigned event)
 		}
 		tty_kref_put(tty);
 		break;
+#ifdef CONFIG_LGE_USES_SMD_DS_TTY
+		/*           
+                                                        
+                                                    
+                                                 
+                                                       
+                                                       
+                                                   
+                                                       
+                                                 
+                                     
+   */
+	case SMD_EVENT_REOPEN_READY:
+		/*                                  */
+		spin_lock_irqsave(&info->reset_lock_lha2, flags);
+		info->in_reset = 1;
+		info->in_reset_updated = 1;
+		info->is_open = 0;
+		wake_up_interruptible(&info->ch_opened_wait_queue);
+		spin_unlock_irqrestore(&info->reset_lock_lha2, flags);
+		break;
+#endif
 	}
 }
 
@@ -411,20 +447,20 @@ static int smd_tty_port_activate(struct tty_port *tport,
 				peripheral);
 
 			/*
-			 * Sleep, inorder to reduce the frequency of
-			 * retry by user-space modules and to avoid
-			 * possible watchdog bite.
-			 */
+                                               
+                                              
+                             
+    */
 			msleep((smd_tty[n].open_wait * 1000));
 			res = PTR_ERR(info->pil);
 			goto out;
 		}
 
-		/* Wait for the modem SMSM to be inited for the SMD
-		 * Loopback channel to be allocated at the modem. Since
-		 * the wait need to be done atmost once, using msleep
-		 * doesn't degrade the performance.
-		 */
+		/*                                                 
+                                                         
+                                                       
+                                     
+   */
 		if (n == LOOPBACK_IDX) {
 			if (!is_modem_smsm_inited())
 				msleep(5000);
@@ -434,9 +470,9 @@ static int smd_tty_port_activate(struct tty_port *tport,
 		}
 
 		/*
-		 * Wait for a channel to be allocated so we know
-		 * the modem is ready enough.
-		 */
+                                                  
+                               
+   */
 		if (smd_tty[n].open_wait) {
 			res = wait_for_completion_interruptible_timeout(
 					&info->ch_allocated,
@@ -456,6 +492,32 @@ static int smd_tty_port_activate(struct tty_port *tport,
 				goto release_pil;
 			}
 		}
+#ifdef CONFIG_LGE_USES_SMD_DS_TTY
+		/*           
+                                                     
+                               
+   */
+		if (n == DS_IDX) {
+			/*                                       */
+			pr_info("%s: checking DS modem status\n", __func__);
+			res = wait_event_interruptible_timeout(
+					info->ch_opened_wait_queue,
+					info->is_dsmodem_ready, (lge_ds_modem_wait * HZ));
+			if (res == 0) {
+				res = -ETIMEDOUT;
+				pr_err("%s: timeout to wait for %s modem: %d\n",
+						__func__, info->ch_name, res);
+				goto release_pil;
+			}
+			if (res < 0) {
+				pr_err("%s: timeout to wait for %s modem: %d\n",
+						__func__, info->ch_name, res);
+				goto release_pil;
+			}
+			pr_info("%s: DS modem is OK, open smd0..\n", __func__);
+		}
+#endif
+
 	}
 
 	tasklet_init(&info->tty_tsklt, smd_tty_read, (unsigned long)info);
@@ -511,6 +573,9 @@ static void smd_tty_port_shutdown(struct tty_port *tport)
 	struct smd_tty_info *info;
 	struct tty_struct *tty = tty_port_tty_get(tport);
 	unsigned long flags;
+#ifdef CONFIG_LGE_USES_SMD_DS_TTY
+	int res = 0;
+#endif
 
 	info = tty->driver_data;
 	if (info == 0) {
@@ -535,6 +600,37 @@ static void smd_tty_port_shutdown(struct tty_port *tport)
 	del_timer(&info->buf_req_timer);
 
 	smd_close(info->ch);
+#ifdef CONFIG_LGE_USES_SMD_DS_TTY
+	/*           
+                                                       
+                                                   
+                                                
+                                                      
+                                                      
+                                                  
+                                                      
+                                                
+                                    
+  */
+	pr_info("%s: waiting to close smd %s completely\n",
+			__func__, info->ch_name);
+	/*                                         */
+	res = wait_event_interruptible_timeout(
+			info->ch_opened_wait_queue,
+			!info->is_open, (lge_ds_modem_wait * HZ));
+	if (res == 0) {
+		/*                                   */
+		res = -ETIMEDOUT;
+		pr_err("%s: timeout to wait for %s smd_close.\
+				next smd_open may fail....%d\n",
+				__func__, info->ch_name, res);
+	}
+	if (res < 0) {
+		pr_err("%s: wait for %s smd_close failed.\
+				next smd_open may fail....%d\n",
+				__func__, info->ch_name, res);
+	}
+#endif
 	info->ch = NULL;
 	subsystem_put(info->pil);
 
@@ -561,17 +657,17 @@ static int smd_tty_write(struct tty_struct *tty, const unsigned char *buf, int l
 	struct smd_tty_info *info = tty->driver_data;
 	int avail;
 
-	/* if we're writing to a packet channel we will
-	** never be able to write more data than there
-	** is currently space for
-	*/
+	/*                                             
+                                               
+                          
+ */
 	if (is_in_reset(info))
 		return -ENETRESET;
 
 	avail = smd_write_avail(info->ch);
-	/* if no space, we'll have to setup a notification later to wake up the
-	 * tty framework when space becomes avaliable
-	 */
+	/*                                                                     
+                                              
+  */
 	if (!avail) {
 		smd_enable_read_intr(info->ch);
 		return 0;
@@ -611,10 +707,10 @@ static void smd_tty_unthrottle(struct tty_struct *tty)
 }
 
 /*
- * Returns the current TIOCM status bits including:
- *      SMD Signals (DTR/DSR, CTS/RTS, CD, RI)
- *      TIOCM_OUT1 - reset state (1=in reset)
- *      TIOCM_OUT2 - reset state updated (1=updated)
+                                                   
+                                              
+                                             
+                                                    
  */
 static int smd_tty_tiocmget(struct tty_struct *tty)
 {
@@ -652,7 +748,7 @@ static int smd_tty_tiocmset(struct tty_struct *tty,
 
 static void loopback_probe_worker(struct work_struct *work)
 {
-	/* wait for modem to restart before requesting loopback server */
+	/*                                                             */
 	if (!is_modem_smsm_inited())
 		schedule_delayed_work(&loopback_work, msecs_to_jiffies(1000));
 	else
@@ -696,11 +792,34 @@ static int smd_tty_dummy_probe(struct platform_device *pdev)
 	return -ENODEV;
 }
 
-/**
- * smd_tty_log_init()- Init function for IPC logging
- *
- * Initialize the buffer that is used to provide the log information
- * pertaining to the smd_tty module.
+#ifdef CONFIG_LGE_USES_SMD_DS_TTY
+static int smd_tty_ds_probe(struct platform_device *pdev)
+{
+	if (!smd_tty[DS_IDX].dev_name) {
+		pr_err("%s: no device for DS\n", __func__);
+		return -EINVAL;
+	}
+
+	if (strncmp(pdev->name, smd_tty[DS_IDX].dev_name,
+				SMD_MAX_CH_NAME_LEN)) {
+		pr_err("%s: smd device is not DS %s %s\n", __func__,
+				pdev->name, smd_tty[DS_IDX].dev_name);
+		return -EINVAL;
+	}
+
+	complete_all(&smd_tty[DS_IDX].ch_allocated);
+	smd_tty[DS_IDX].is_dsmodem_ready = 1;
+	wake_up_interruptible(&smd_tty[DS_IDX].ch_opened_wait_queue);
+	pr_info("%s: probing of smd tty for DS modem is done\n", __func__);
+	return 0;
+}
+#endif
+
+/* 
+                                                    
+  
+                                                                    
+                                    
  */
 static void smd_tty_log_init(void)
 {
@@ -755,13 +874,24 @@ static int smd_tty_device_init(int idx)
 	port = &smd_tty[idx].port;
 	tty_port_init(port);
 	port->ops = &smd_tty_port_ops;
-	/* TODO: For kernel >= 3.7 use tty_port_register_device */
+	/*                                                      */
 	smd_tty[idx].device_ptr = tty_register_device(smd_tty_driver, idx, 0);
 	init_completion(&smd_tty[idx].ch_allocated);
 	mutex_init(&smd_tty[idx].open_lock_lha1);
 
-	/* register platform device */
+#ifdef CONFIG_LGE_USES_SMD_DS_TTY
+	if (idx == DS_IDX) {
+		/*                                 */
+		smd_tty[idx].driver.probe = smd_tty_ds_probe;
+		smd_tty[idx].is_dsmodem_ready = 0;
+	} else {
+		/*                          */
+		smd_tty[idx].driver.probe = smd_tty_dummy_probe;
+	}
+#else
+	/*                          */
 	smd_tty[idx].driver.probe = smd_tty_dummy_probe;
+#endif
 	smd_tty[idx].driver.driver.name = smd_tty[idx].dev_name;
 	smd_tty[idx].driver.driver.owner = THIS_MODULE;
 	spin_lock_init(&smd_tty[idx].reset_lock_lha2);
@@ -806,26 +936,28 @@ static int smd_tty_core_init(void)
 							SMD_MAX_CH_NAME_LEN);
 		}
 
+#ifndef CONFIG_LGE_USES_SMD_DS_TTY
 		if (idx == DS_IDX) {
 			/*
-			 * DS port uses the kernel API starting with
-			 * 8660 Fusion.  Only register the userspace
-			 * platform device for older targets.
-			 */
+                                               
+                                               
+                                        
+    */
 			int legacy_ds = 0;
 
 			legacy_ds |= cpu_is_msm7x01() || cpu_is_msm7x25();
 			legacy_ds |= cpu_is_msm7x27() || cpu_is_msm7x30();
 			legacy_ds |= cpu_is_qsd8x50() || cpu_is_msm8x55();
 			/*
-			 * use legacy mode for 8660 Standalone (subtype 0)
-			 */
+                                                     
+    */
 			legacy_ds |= cpu_is_msm8x60() &&
 					(socinfo_get_platform_subtype() == 0x0);
 
 			if (!legacy_ds)
 				continue;
 		}
+#endif
 
 		ret = smd_tty_device_init(idx);
 		if (ret) {
@@ -839,7 +971,7 @@ static int smd_tty_core_init(void)
 	return 0;
 
 out:
-	/* unregister platform devices */
+	/*                             */
 	for (n = 0; n < ARRAY_SIZE(smd_configs); ++n) {
 		idx = smd_configs[n].tty_dev_index;
 
@@ -908,6 +1040,29 @@ static int smd_tty_devicetree_init(struct platform_device *pdev)
 						SMD_MAX_CH_NAME_LEN);
 		}
 
+#ifndef CONFIG_LGE_USES_SMD_DS_TTY
+		if (idx == DS_IDX) {
+			/*
+                                               
+                                               
+                                        
+    */
+			int legacy_ds = 0;
+
+			legacy_ds |= cpu_is_msm7x01() || cpu_is_msm7x25();
+			legacy_ds |= cpu_is_msm7x27() || cpu_is_msm7x30();
+			legacy_ds |= cpu_is_qsd8x50() || cpu_is_msm8x55();
+			/*
+                                                     
+    */
+			legacy_ds |= cpu_is_msm8x60() &&
+				(socinfo_get_platform_subtype() == 0x0);
+
+			if (!legacy_ds)
+				continue;
+		}
+#endif
+
 		ret = smd_tty_device_init(idx);
 		if (ret) {
 			SMD_TTY_ERR("%s: init failed %d (%d)\n", __func__,
@@ -922,7 +1077,7 @@ static int smd_tty_devicetree_init(struct platform_device *pdev)
 
 error:
 	SMD_TTY_ERR("%s: unregister platform device\n", __func__);
-	/*Unregister platform devices*/
+	/*                           */
 	for_each_child_of_node(pdev->dev.of_node, node) {
 
 		key = "qcom,smdtty-dev-idx";
@@ -973,6 +1128,9 @@ static void smd_tty_probe_worker(struct work_struct *work)
 
 static struct of_device_id msm_smd_tty_match_table[] = {
 	{ .compatible = "qcom,smdtty" },
+#ifndef CONFIG_LGE_DDM_TTY
+	{ .compatible = "qcom,smdttyatnt" },
+#endif
 	{},
 };
 

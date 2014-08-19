@@ -71,6 +71,11 @@
 #define HALT_ACK_TIMEOUT_US				500000
 #define CLK_UPDATE_TIMEOUT_US				500000
 
+//                                            
+static int enable_pronto_ramdump;
+module_param(enable_pronto_ramdump, int, S_IRUGO | S_IWUSR);
+//             
+
 struct pronto_data {
 	void __iomem *base;
 	void __iomem *reset_base;
@@ -125,43 +130,43 @@ static int pil_pronto_reset(struct pil_desc *pil)
 	void __iomem *base = drv->base;
 	phys_addr_t start_addr = pil_get_entry_addr(pil);
 
-	/* Deassert reset to subsystem and wait for propagation */
+	/*                                                      */
 	reg = readl_relaxed(drv->reset_base);
 	reg &= ~CLK_CTL_WCNSS_RESTART_BIT;
 	writel_relaxed(reg, drv->reset_base);
 	mb();
 	udelay(2);
 
-	/* Configure boot address */
+	/*                        */
 	writel_relaxed(start_addr >> 16, base +
 			PRONTO_PMU_CCPU_BOOT_REMAP_ADDR);
 
-	/* Use the high vector table */
+	/*                           */
 	reg = readl_relaxed(base + PRONTO_PMU_CCPU_CTL);
 	reg |= PRONTO_PMU_CCPU_CTL_REMAP_EN | PRONTO_PMU_CCPU_CTL_HIGH_IVT;
 	writel_relaxed(reg, base + PRONTO_PMU_CCPU_CTL);
 
-	/* Turn on AHB clock of common_ss */
+	/*                                */
 	reg = readl_relaxed(base + PRONTO_PMU_COMMON_AHB_CBCR);
 	reg |= PRONTO_PMU_COMMON_AHB_CBCR_CLK_EN;
 	writel_relaxed(reg, base + PRONTO_PMU_COMMON_AHB_CBCR);
 
-	/* Turn on CPU clock of common_ss */
+	/*                                */
 	reg = readl_relaxed(base + PRONTO_PMU_COMMON_CPU_CBCR);
 	reg |= PRONTO_PMU_COMMON_CPU_CBCR_CLK_EN;
 	writel_relaxed(reg, base + PRONTO_PMU_COMMON_CPU_CBCR);
 
-	/* Enable A2XB bridge */
+	/*                    */
 	reg = readl_relaxed(base + PRONTO_PMU_COMMON_CSR);
 	reg |= PRONTO_PMU_COMMON_CSR_A2XB_CFG_EN;
 	writel_relaxed(reg, base + PRONTO_PMU_COMMON_CSR);
 
-	/* Enable common_ss power */
+	/*                        */
 	reg = readl_relaxed(base + PRONTO_PMU_COMMON_GDSCR);
 	reg &= ~PRONTO_PMU_COMMON_GDSCR_SW_COLLAPSE;
 	writel_relaxed(reg, base + PRONTO_PMU_COMMON_GDSCR);
 
-	/* Wait for AHB clock to be on */
+	/*                             */
 	rc = readl_tight_poll_timeout(base + PRONTO_PMU_COMMON_AHB_CBCR,
 				      reg,
 				      !(reg & PRONTO_PMU_COMMON_AHB_CLK_OFF),
@@ -171,7 +176,7 @@ static int pil_pronto_reset(struct pil_desc *pil)
 		return rc;
 	}
 
-	/* Wait for CPU clock to be on */
+	/*                             */
 	rc = readl_tight_poll_timeout(base + PRONTO_PMU_COMMON_CPU_CBCR,
 				      reg,
 				      !(reg & PRONTO_PMU_COMMON_CPU_CLK_OFF),
@@ -181,7 +186,7 @@ static int pil_pronto_reset(struct pil_desc *pil)
 		return rc;
 	}
 
-	/* Deassert ARM9 software reset */
+	/*                              */
 	reg = readl_relaxed(base + PRONTO_PMU_SOFT_RESET);
 	reg &= ~PRONTO_PMU_SOFT_RESET_CRCM_CCPU_SOFT_RESET;
 	writel_relaxed(reg, base + PRONTO_PMU_SOFT_RESET);
@@ -195,7 +200,7 @@ static int pil_pronto_shutdown(struct pil_desc *pil)
 	int ret;
 	u32 reg, status;
 
-	/* Halt A2XB */
+	/*           */
 	writel_relaxed(1, drv->axi_halt_base + AXI_HALTREQ);
 	ret = readl_poll_timeout(drv->axi_halt_base + AXI_HALTACK,
 				status, status, 50, HALT_ACK_TIMEOUT_US);
@@ -206,16 +211,16 @@ static int pil_pronto_shutdown(struct pil_desc *pil)
 
 	writel_relaxed(0, drv->axi_halt_base + AXI_HALTREQ);
 
-	/* Assert reset to Pronto */
+	/*                        */
 	reg = readl_relaxed(drv->reset_base);
 	reg |= CLK_CTL_WCNSS_RESTART_BIT;
 	writel_relaxed(reg, drv->reset_base);
 
-	/* Wait for reset to complete */
+	/*                            */
 	mb();
 	usleep_range(1000, 2000);
 
-	/* Deassert reset to subsystem and wait for propagation */
+	/*                                                      */
 	reg = readl_relaxed(drv->reset_base);
 	reg &= ~CLK_CTL_WCNSS_RESTART_BIT;
 	writel_relaxed(reg, drv->reset_base);
@@ -357,6 +362,8 @@ static void wcnss_post_bootup(struct work_struct *work)
 	struct platform_device *pdev = wcnss_get_platform_device();
 	struct wcnss_wlan_config *pwlanconfig = wcnss_get_wlan_config();
 
+    pr_err("Enter %s()\n", __func__);
+
 	wcnss_wlan_power(&pdev->dev, pwlanconfig, WCNSS_WLAN_SWITCH_OFF, NULL);
 }
 
@@ -364,6 +371,7 @@ static int wcnss_shutdown(const struct subsys_desc *subsys)
 {
 	struct pronto_data *drv = subsys_to_drv(subsys);
 
+    pr_err("Enter %s()\n", __func__);
 	pil_shutdown(&drv->desc);
 	flush_delayed_work(&drv->cancel_vote_work);
 	wcnss_flush_delayed_boot_votes();
@@ -378,6 +386,7 @@ static int wcnss_powerup(const struct subsys_desc *subsys)
 	struct wcnss_wlan_config *pwlanconfig = wcnss_get_wlan_config();
 	int    ret = -1;
 
+    pr_err("Enter %s()\n", __func__);
 	if (pdev && pwlanconfig)
 		ret = wcnss_wlan_power(&pdev->dev, pwlanconfig,
 					WCNSS_WLAN_SWITCH_ON, NULL);
@@ -407,7 +416,11 @@ static int wcnss_ramdump(int enable, const struct subsys_desc *subsys)
 {
 	struct pronto_data *drv = subsys_to_drv(subsys);
 
-	if (!enable)
+    pr_err("Enter : wcnss_ramdump(), arg enable = %d,  enable_pronto_ramdump = %d\n", enable, enable_pronto_ramdump);
+//                                            
+//             
+	if(!enable_pronto_ramdump)
+//             
 		return 0;
 
 	return pil_do_ramdump(&drv->desc, drv->ramdump_dev);
@@ -420,6 +433,8 @@ static int __devinit pil_pronto_probe(struct platform_device *pdev)
 	struct pil_desc *desc;
 	int ret;
 	uint32_t regval;
+
+       pr_err("Enter %s()\n", __func__);
 
 	drv = devm_kzalloc(&pdev->dev, sizeof(*drv), GFP_KERNEL);
 	if (!drv)
@@ -504,17 +519,19 @@ static int __devinit pil_pronto_probe(struct platform_device *pdev)
 
 	drv->subsys = subsys_register(&drv->subsys_desc);
 	if (IS_ERR(drv->subsys)) {
+		pr_err("Error on subsys_register()\n");
 		ret = PTR_ERR(drv->subsys);
 		goto err_subsys;
 	}
 
 	drv->ramdump_dev = create_ramdump_device("pronto", &pdev->dev);
 	if (!drv->ramdump_dev) {
+		pr_err("Error on create_ramdump_device()\n");
 		ret = -ENOMEM;
 		goto err_irq;
 	}
 
-	/* Initialize common_ss GDSCR to wait 4 cycles between states */
+	/*                                                            */
 	regval = readl_relaxed(drv->base + PRONTO_PMU_COMMON_GDSCR)
 		& PRONTO_PMU_COMMON_GDSCR_SW_COLLAPSE;
 	regval |= (2 << EN_REST_WAIT) | (2 << EN_FEW_WAIT)

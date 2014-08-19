@@ -184,7 +184,7 @@ static void bfs_evict_inode(struct inode *inode)
 		return;
 
 	mutex_lock(&info->bfs_lock);
-	/* clear on-disk inode */
+	/*                     */
 	memset(di, 0, sizeof(struct bfs_inode));
 	mark_buffer_dirty(bh);
 	brelse(bh);
@@ -198,10 +198,10 @@ static void bfs_evict_inode(struct inode *inode)
         }
 
 	/*
-	 * If this was the last file, make the previous block
-	 * "last block of the last file" even if there is no
-	 * real file there, saves us 1 gap.
-	 */
+                                                      
+                                                     
+                                    
+  */
 	if (info->si_lf_eblk == bi->i_eblock)
 		info->si_lf_eblk = bi->i_sblock - 1;
 	mutex_unlock(&info->bfs_lock);
@@ -280,6 +280,11 @@ static int init_inodecache(void)
 
 static void destroy_inodecache(void)
 {
+	/*
+                                                               
+                  
+  */
+	rcu_barrier();
 	kmem_cache_destroy(bfs_inode_cachep);
 }
 
@@ -379,7 +384,7 @@ static int bfs_fill_super(struct super_block *s, void *data, int silent)
 	info->si_freei = 0;
 	info->si_lf_eblk = 0;
 
-	/* can we read the last block? */
+	/*                             */
 	bh = sb_bread(s, info->si_blocks - 1);
 	if (!bh) {
 		printf("Last block not available: %lu\n", info->si_blocks - 1);
@@ -405,7 +410,7 @@ static int bfs_fill_super(struct super_block *s, void *data, int silent)
 
 		di = (struct bfs_inode *)bh->b_data + off;
 
-		/* test if filesystem is not corrupted */
+		/*                                     */
 
 		i_eoff = le32_to_cpu(di->i_eoffset);
 		i_sblock = le32_to_cpu(di->i_sblock);
