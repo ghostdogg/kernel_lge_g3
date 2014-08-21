@@ -302,7 +302,7 @@ static ssize_t felica_cen_write(struct file *fp, const char *buf, size_t count, 
   #endif
   return 1;
 }
-
+
 /*
  *    STRUCT DEFINITION
  */

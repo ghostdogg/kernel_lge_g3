@@ -17,7 +17,7 @@ static int __devinit snfc_platdrv_probe(struct platform_device *pdev)
     rc |= snfc_avail_poll_probe(np);
 
     return rc;
-}
+}
 
 static int snfc_platdrv_remove(struct platform_device *pdev)
 {
